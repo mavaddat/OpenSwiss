@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 
 public class Tournament extends UnicastRemoteObject implements TournamentInterface, java.io.Serializable {
 
-    private static final long serialVersionUID = Gotha.GOTHA_DATA_VERSION;
+//    private static final long serialVersionUID = Gotha.GOTHA_DATA_VERSION;
     private Date saveDT;
     private String externalIPAddress;
     private String remoteRunningMode = "---";
@@ -1038,6 +1038,8 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
                 ScoredPlayer sP1 = hmScoredPlayers.get(p1.getKeyString());
                 ScoredPlayer sP2 = hmScoredPlayers.get(p2.getKeyString());
                 costs[i][j] = costs[j][i] = costValue(sP1, sP2, roundNumber, alPreviousGames);
+//                String sCost = Gotha.formatLongNumberBy3digits(costs[i][j]);
+//                System.out.println("i = " + i + " j = " + j + " sCost = " +  sCost + " p1 = " + p1.getName() + " p2 = " + p2.getName());
             }
         }
 
@@ -1443,7 +1445,7 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
                 g.setWhitePlayer(p1);
                 g.setBlackPlayer(p2);
             } else { // choose color from a det random
-                if (Pairing.detRandom(1, sP1, sP2) == 0) {
+                if (Pairing.detRandom(1L, sP1, sP2) == 0) {
                     g.setWhitePlayer(p1);
                     g.setBlackPlayer(p2);
                 } else {
@@ -1504,10 +1506,10 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
     }
     
     @Override
-    public void renumberTablesByBestScore(int roundNumber, ArrayList<Game> alGamesToRenumber) throws RemoteException{
+    public void renumberTablesByBestScoreThenRating(int roundNumber, ArrayList<Game> alGamesToRenumber) throws RemoteException{
         fillBaseScoringInfoIfNecessary();
         PlacementParameterSet pps = this.getTournamentParameterSet().getPlacementParameterSet();
-        Collections.sort(alGamesToRenumber, new GameComparator(GameComparator.BEST_SCO_ORDER, hmScoredPlayers, pps));
+        Collections.sort(alGamesToRenumber, new GameComparator(GameComparator.BEST_SCR_ORDER, hmScoredPlayers, pps));
 
         // Remove games from hmGames
         for (Game g : alGamesToRenumber) {
@@ -2093,7 +2095,7 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
         } else if (wbBalance0 < wbBalance1) {
             pt0IsWhite = true;
         } else { // choose color from a det random
-            if (Pairing.detRandom(1, pt0, pt1) == 0) {
+            if (Pairing.detRandom(1L, pt0, pt1) == 0) {
                 pt0IsWhite = true;
             } else {
                 pt0IsWhite = false;
@@ -2292,15 +2294,17 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
             bSP.setGame(r, g);
         }
 
-        // 2) nbwX2 and mmsX2
+        // 2) nbwX2,cpsX2 and mmsX2
         for (int r = 0; r < numberOfRoundsToCompute; r++) {
             // Initialize
             for (ScoredPlayer sp : hmScoredPlayers.values()) {
                 if (r == 0) {
                     sp.setNBWX2(r, 0);
+                    sp.setCPSX2(r, 0);
                     sp.setMMSX2(r, 2 * sp.smms(gps));
                 } else {
                     sp.setNBWX2(r, sp.getNBWX2(r - 1));
+                    sp.setCPSX2(r, 2 * sp.getCPSX2(r - 1));                  
                     sp.setMMSX2(r, sp.getMMSX2(r - 1));
                 }
             }
@@ -2328,25 +2332,31 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
                     case Game.RESULT_WHITEWINS:
                     case Game.RESULT_WHITEWINS_BYDEF:
                         wSP.setNBWX2(r, wSP.getNBWX2(r) + 2);
+                        wSP.setCPSX2(r, wSP.getCPSX2(r) + 2);
                         wSP.setMMSX2(r, wSP.getMMSX2(r) + 2);
                         break;
                     case Game.RESULT_BLACKWINS:
                     case Game.RESULT_BLACKWINS_BYDEF:
                         bSP.setNBWX2(r, bSP.getNBWX2(r) + 2);
+                        bSP.setCPSX2(r, bSP.getCPSX2(r) + 2);
                         bSP.setMMSX2(r, bSP.getMMSX2(r) + 2);
                         break;
                     case Game.RESULT_EQUAL:
                     case Game.RESULT_EQUAL_BYDEF:
                         wSP.setNBWX2(r, wSP.getNBWX2(r) + 1);
+                        wSP.setCPSX2(r, wSP.getCPSX2(r) + 1);
                         wSP.setMMSX2(r, wSP.getMMSX2(r) + 1);
                         bSP.setNBWX2(r, bSP.getNBWX2(r) + 1);
+                        bSP.setCPSX2(r, bSP.getCPSX2(r) + 1);
                         bSP.setMMSX2(r, bSP.getMMSX2(r) + 1);
                         break;
                     case Game.RESULT_BOTHWIN:
                     case Game.RESULT_BOTHWIN_BYDEF:
                         wSP.setNBWX2(r, wSP.getNBWX2(r) + 2);
+                        wSP.setCPSX2(r, wSP.getCPSX2(r) + 2);
                         wSP.setMMSX2(r, wSP.getMMSX2(r) + 2);
                         bSP.setNBWX2(r, bSP.getNBWX2(r) + 2);
+                        bSP.setCPSX2(r, bSP.getCPSX2(r) + 2);
                         bSP.setMMSX2(r, bSP.getMMSX2(r) + 2);
                         break;
                 }
@@ -2371,6 +2381,7 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
                     nbPMMS2AB = (nbPtsMMS2AbsentOrBye / 2) * 2;
                 }
                 sp.setNBWX2(r, sp.getNBWX2(r) + nbPNBW2AB);
+                sp.setCPSX2(r, sp.getCPSX2(r) + nbPNBW2AB);
                 sp.setMMSX2(r, sp.getMMSX2(r) + nbPMMS2AB);
             }
         }
@@ -2401,9 +2412,11 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
             for (ScoredPlayer sp : hmScoredPlayers.values()) {
                 if (r == 0) {
                     sp.setNBWVirtualX2(r, 0);
+                    sp.setCPSVirtualX2(r, 0);
                     sp.setMMSVirtualX2(r, 2 * sp.smms(gps));
                 } else {
                     sp.setNBWVirtualX2(r, sp.getNBWVirtualX2(r - 1));
+                    sp.setCPSVirtualX2(r, 2 * sp.getNBWVirtualX2(r - 1));
                     sp.setMMSVirtualX2(r, sp.getMMSVirtualX2(r - 1));
                 }
             }
@@ -2434,22 +2447,28 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
                         break;
                     case Game.RESULT_WHITEWINS:
                         wSP.setNBWVirtualX2(r, wSP.getNBWVirtualX2(r) + 2);
+                        wSP.setCPSVirtualX2(r, wSP.getCPSVirtualX2(r) + 2);
                         wSP.setMMSVirtualX2(r, wSP.getMMSVirtualX2(r) + 2);
                         break;
                     case Game.RESULT_BLACKWINS:
                         bSP.setNBWVirtualX2(r, bSP.getNBWVirtualX2(r) + 2);
+                        bSP.setCPSVirtualX2(r, bSP.getCPSVirtualX2(r) + 2);
                         bSP.setMMSVirtualX2(r, bSP.getMMSVirtualX2(r) + 2);
                         break;
                     case Game.RESULT_EQUAL:
                         wSP.setNBWVirtualX2(r, wSP.getNBWVirtualX2(r) + 1);
+                        wSP.setCPSVirtualX2(r, wSP.getCPSVirtualX2(r) + 1);
                         wSP.setMMSVirtualX2(r, wSP.getMMSVirtualX2(r) + 1);
                         bSP.setNBWVirtualX2(r, bSP.getNBWVirtualX2(r) + 1);
+                        bSP.setCPSVirtualX2(r, bSP.getCPSVirtualX2(r) + 1);
                         bSP.setMMSVirtualX2(r, bSP.getMMSVirtualX2(r) + 1);
                         break;
                     case Game.RESULT_BOTHWIN:
                         wSP.setNBWVirtualX2(r, wSP.getNBWVirtualX2(r) + 2);
+                        wSP.setCPSVirtualX2(r, wSP.getCPSVirtualX2(r) + 2);
                         wSP.setMMSVirtualX2(r, wSP.getMMSVirtualX2(r) + 2);
                         bSP.setNBWVirtualX2(r, bSP.getNBWVirtualX2(r) + 2);
+                        bSP.setCPSVirtualX2(r, bSP.getCPSVirtualX2(r) + 2);
                         bSP.setMMSVirtualX2(r, bSP.getMMSVirtualX2(r) + 2);
                         break;
                 }
@@ -2461,6 +2480,7 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
             for (int r = 0; r < numberOfRoundsToCompute; r++) {
                 if (!sp.gameWasPlayed(r)) nbVPX2++;
                 sp.setNBWVirtualX2(r, sp.getNBWVirtualX2(r) + nbVPX2);
+                sp.setCPSVirtualX2(r, sp.getCPSVirtualX2(r) + nbVPX2);
                 sp.setMMSVirtualX2(r, sp.getMMSVirtualX2(r) + nbVPX2);  
             } 
         }
@@ -2806,10 +2826,17 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
         int mainCrit = pps.mainCriterion();
         // And what is mainScoreMin and mainScoreMax ?
         int mainScoreMin = 0;              // Default value
-        int mainScoreMax = roundNumber;// Default value
+        int mainScoreMax = roundNumber;     // Default value
         if (mainCrit == PlacementParameterSet.PLA_CRIT_MMS) {
             mainScoreMin = gps.getGenMMFloor() + PlacementParameterSet.PLA_SMMS_CORR_MIN - Gotha.MIN_RANK;
             mainScoreMax = gps.getGenMMBar() + PlacementParameterSet.PLA_SMMS_CORR_MAX + roundNumber - Gotha.MIN_RANK;
+        }
+        
+        if (mainCrit == PlacementParameterSet.PLA_CRIT_CPS) {
+            mainScoreMin = 0;
+            mainScoreMax = 1;
+            int wRound = 0;
+            while (wRound++ < roundNumber) mainScoreMax *= 2;
         }
 
         int groupNumber = 0;
@@ -2861,7 +2888,7 @@ public class Tournament extends UnicastRemoteObject implements TournamentInterfa
             sp.nbDU = sp.nbDD = 0;
         }
         if (roundNumber >= 1) {
-            // prepare an Array of scores before round r
+            // prepare an Array of scores before round roundNumber
             ArrayList<ScoredPlayer> alTempScoredPlayers = new ArrayList<ScoredPlayer>(hmScoredPlayers.values());
             int nbP = alTempScoredPlayers.size();
             int[][] scoreBefore = new int[roundNumber][nbP];
